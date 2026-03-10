@@ -1,17 +1,26 @@
-import datetime
-import logging
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
+import sqlite3
+from datetime import datetime
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
-# Настройка логирования
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+from sqlalchemy.sql import func
 
 Base = declarative_base()
+
+
+class Match(Base):
+    __tablename__ = 'matches'
+
+    id = Column(Integer, primary_key=True)
+    tournament = Column(String)
+    home_team = Column(String)
+    away_team = Column(String)
+    match_date = Column(DateTime)
+    is_notified = Column(Boolean, default=False)
+    match_status = Column(String, default='scheduled')
+
+    def __repr__(self):
+        return f"<Match(id={self.id}, {self.home_team} vs {self.away_team})>"
 
 
 class Chat(Base):
@@ -26,115 +35,41 @@ class Chat(Base):
     def __repr__(self):
         return f"<Chat(chat_id={self.chat_id}, user_id={self.user_id})>"
 
-class Match(Base):
-    __tablename__ = 'matches'
-
-    id = Column(Integer, primary_key=True)
-    tournament = Column(String)  # Название турнира
-    home_team = Column(String)  # Хозяева
-    away_team = Column(String)  # Гости
-    match_date = Column(DateTime)  # Дата и время матча
-    is_notified = Column(Boolean, default=False)  # Было ли отправлено уведомление
-    match_status = Column(String, default='scheduled')  # scheduled, finished, postponed
-
 
 class Database:
-    def __init__(self, db_path='sqlite:///chelsea_matches.db'):
-        self.engine = create_engine(db_path)
+    def __init__(self, db_name='chelsea_matches.db'):
+        self.engine = create_engine(f'sqlite:///{db_name}')
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
 
-    def parse_date(self, date_value):
-        """Безопасный парсинг даты из разных форматов"""
-        if isinstance(date_value, datetime.datetime):
-            return date_value
-
-        if isinstance(date_value, str):
-            try:
-                # Пробуем стандартный ISO формат
-                return datetime.datetime.fromisoformat(date_value)
-            except ValueError:
-                try:
-                    # Пробуем без миллисекунд
-                    if '.' in date_value:
-                        date_value = date_value.split('.')[0]
-                    return datetime.datetime.fromisoformat(date_value)
-                except ValueError:
-                    # Пробуем формат SQLite
-                    return datetime.datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S.%f')
-        return None
-
-    def add_match(self, tournament, home_team, away_team, match_date):
-        """Добавление матча в БД"""
-        session = self.Session()
-        # Убеждаемся, что дата в правильном формате
-        if isinstance(match_date, str):
-            match_date = self.parse_date(match_date)
-
-        match = Match(
-            tournament=tournament,
-            home_team=home_team,
-            away_team=away_team,
-            match_date=match_date
-        )
-        session.add(match)
-        session.commit()
-        session.close()
-
     def get_next_match(self):
-        """Получение следующего матча"""
+        """Получить следующий матч"""
         session = self.Session()
-        now = datetime.datetime.now()
         try:
-            # Сначала проверим количество записей
-            count = session.query(Match).count()
-            logger.info(f"Всего записей в БД: {count}")
-
-            # Найдем следующий матч
-            match = session.query(Match).filter(
-                Match.match_date > now,
-                Match.match_status == 'scheduled'
-            ).order_by(Match.match_date).first()
-
-            # Если нашли матч, выводим отладочную информацию
-            if match:
-                logger.info(f"✅ Найден матч: {match.home_team} vs {match.away_team}, дата: {match.match_date}")
-            else:
-                logger.warning(f"❌ Матчи не найдены. Текущее время: {now}")
-
-                # Для отладки покажем все матчи
-                all_matches = session.query(Match).all()
-                logger.info(f"Всего матчей в БД: {len(all_matches)}")
-                for m in all_matches:
-                    logger.info(f"  - {m.home_team} vs {m.away_team}, дата: {m.match_date}, статус: {m.match_status}")
-
-        except Exception as e:
-            logger.error(f"Ошибка в get_next_match: {e}")
-            match = None
+            now = datetime.now()
+            match = session.query(Match) \
+                .filter(Match.match_date > now) \
+                .order_by(Match.match_date) \
+                .first()
+            return match
         finally:
             session.close()
-        return match
 
     def get_today_matches(self):
-        """Матчи на сегодня"""
+        """Получить матчи на сегодня"""
         session = self.Session()
-        today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = today_start + datetime.timedelta(days=1)
-
         try:
-            matches = session.query(Match).filter(
-                Match.match_date >= today_start,
-                Match.match_date < today_end
-            ).all()
+            now = datetime.now()
+            today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+            today_end = datetime(now.year, now.month, now.day, 23, 59, 59)
 
-            logger.info(f"Найдено матчей на сегодня: {len(matches)}")
-
-        except Exception as e:
-            logger.error(f"Ошибка в get_today_matches: {e}")
-            matches = []
+            matches = session.query(Match) \
+                .filter(Match.match_date.between(today_start, today_end)) \
+                .order_by(Match.match_date) \
+                .all()
+            return matches
         finally:
             session.close()
-        return matches
 
     def get_upcoming_matches(self, days=30, limit=5):
         """Получить ближайшие матчи (по умолчанию следующие 5)"""
@@ -153,20 +88,50 @@ class Database:
         finally:
             session.close()
 
-    def mark_notified(self, match_id):
-        """Отметить матч как уведомленный"""
+    def add_match(self, tournament, home_team, away_team, match_date):
+        """Добавить матч в базу"""
         session = self.Session()
         try:
-            match = session.query(Match).filter_by(id=match_id).first()
-            if match:
-                match.is_notified = True
+            # Проверяем, есть ли уже такой матч
+            existing = session.query(Match) \
+                .filter_by(
+                tournament=tournament,
+                home_team=home_team,
+                away_team=away_team,
+                match_date=match_date
+            ).first()
+
+            if not existing:
+                match = Match(
+                    tournament=tournament,
+                    home_team=home_team,
+                    away_team=away_team,
+                    match_date=match_date
+                )
+                session.add(match)
                 session.commit()
-                logger.info(f"Матч {match_id} отмечен как уведомленный")
+                return True
+            return False
         except Exception as e:
-            logger.error(f"Ошибка в mark_notified: {e}")
+            session.rollback()
+            print(f"Ошибка при добавлении матча: {e}")
+            return False
+        finally:
+            session.close()
+
+    def clear_matches(self):
+        """Очистить таблицу матчей"""
+        session = self.Session()
+        try:
+            session.query(Match).delete()
+            session.commit()
+            print("✅ Таблица матчей очищена")
+        except Exception as e:
+            session.rollback()
+            print(f"❌ Ошибка при очистке: {e}")
         finally:
             session.close()
 
 
-# Создаем экземпляр БД (ЭТО ВАЖНО - ОН ДОЛЖЕН БЫТЬ ЗДЕСЬ)
+# Создаем глобальный экземпляр базы данных
 db = Database()
