@@ -14,6 +14,18 @@ logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 
+class Chat(Base):
+    __tablename__ = 'chats'
+
+    id = Column(Integer, primary_key=True)
+    chat_id = Column(BigInteger, unique=True, nullable=False)
+    user_id = Column(BigInteger, nullable=False)
+    username = Column(String, nullable=True)
+    subscribed_at = Column(DateTime, default=datetime.now)
+
+    def __repr__(self):
+        return f"<Chat(chat_id={self.chat_id}, user_id={self.user_id})>"
+
 class Match(Base):
     __tablename__ = 'matches'
 

@@ -3,8 +3,9 @@ import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler
 from config import BOT_TOKEN
-from database import db, Match
+from database import db, Match, Chat
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from sqlalchemy import select, and_
 
 # Настройка логирования
 logging.basicConfig(
@@ -12,9 +13,6 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
-# ID чатов, где бот должен отправлять уведомления
-NOTIFICATION_CHATS = []
 
 
 # Функция для создания клавиатуры
@@ -28,6 +26,17 @@ def get_main_keyboard():
         [InlineKeyboardButton("❌ Отписаться", callback_data="unsubscribe")]
     ]
     return InlineKeyboardMarkup(keyboard)
+
+
+# Функция для получения подписанных чатов из БД
+async def get_subscribed_chats():
+    """Получает список ID чатов, подписанных на уведомления"""
+    session = db.Session()
+    try:
+        chats = session.execute(select(Chat.chat_id)).scalars().all()
+        return list(chats)
+    finally:
+        session.close()
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -149,14 +158,35 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"🔵 ПОЛУЧЕНА КОМАНДА /subscribe от пользователя {update.effective_user.id}")
 
     chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    username = update.effective_user.username
 
-    if chat_id not in NOTIFICATION_CHATS:
-        NOTIFICATION_CHATS.append(chat_id)
-        text = "✅ Вы подписались на уведомления о матчах!"
-        logger.info(
-            f"✅ Пользователь {update.effective_user.id} подписался на уведомления. Всего подписок: {len(NOTIFICATION_CHATS)}")
-    else:
-        text = "⚠️ Вы уже подписаны на уведомления"
+    session = db.Session()
+    try:
+        # Проверяем, есть ли уже такая подписка
+        existing = session.execute(
+            select(Chat).where(Chat.chat_id == chat_id)
+        ).scalar_one_or_none()
+
+        if not existing:
+            new_chat = Chat(
+                chat_id=chat_id,
+                user_id=user_id,
+                username=username,
+                subscribed_at=datetime.datetime.now()
+            )
+            session.add(new_chat)
+            session.commit()
+            text = "✅ Вы подписались на уведомления о матчах!"
+            logger.info(f"✅ Пользователь {user_id} подписался на уведомления")
+        else:
+            text = "⚠️ Вы уже подписаны на уведомления"
+    except Exception as e:
+        session.rollback()
+        text = "❌ Ошибка при подписке"
+        logger.error(f"Ошибка при подписке: {e}")
+    finally:
+        session.close()
 
     await update.message.reply_text(
         text,
@@ -170,13 +200,25 @@ async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
 
-    if chat_id in NOTIFICATION_CHATS:
-        NOTIFICATION_CHATS.remove(chat_id)
-        text = "❌ Вы отписались от уведомлений"
-        logger.info(
-            f"✅ Пользователь {update.effective_user.id} отписался от уведомлений. Осталось подписок: {len(NOTIFICATION_CHATS)}")
-    else:
-        text = "⚠️ Вы не были подписаны"
+    session = db.Session()
+    try:
+        chat = session.execute(
+            select(Chat).where(Chat.chat_id == chat_id)
+        ).scalar_one_or_none()
+
+        if chat:
+            session.delete(chat)
+            session.commit()
+            text = "❌ Вы отписались от уведомлений"
+            logger.info(f"✅ Пользователь {update.effective_user.id} отписался от уведомлений")
+        else:
+            text = "⚠️ Вы не были подписаны"
+    except Exception as e:
+        session.rollback()
+        text = "❌ Ошибка при отписке"
+        logger.error(f"Ошибка при отписке: {e}")
+    finally:
+        session.close()
 
     await update.message.reply_text(
         text,
@@ -222,22 +264,60 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "subscribe":
         chat_id = update.effective_chat.id
-        if chat_id not in NOTIFICATION_CHATS:
-            NOTIFICATION_CHATS.append(chat_id)
-            text = "✅ Вы подписались на уведомления!"
-            logger.info(f"✅ Пользователь {update.effective_user.id} подписался через кнопку")
-        else:
-            text = "⚠️ Вы уже подписаны"
+        user_id = update.effective_user.id
+        username = update.effective_user.username
+
+        session = db.Session()
+        try:
+            existing = session.execute(
+                select(Chat).where(Chat.chat_id == chat_id)
+            ).scalar_one_or_none()
+
+            if not existing:
+                new_chat = Chat(
+                    chat_id=chat_id,
+                    user_id=user_id,
+                    username=username,
+                    subscribed_at=datetime.datetime.now()
+                )
+                session.add(new_chat)
+                session.commit()
+                text = "✅ Вы подписались на уведомления!"
+                logger.info(f"✅ Пользователь {user_id} подписался через кнопку")
+            else:
+                text = "⚠️ Вы уже подписаны"
+        except Exception as e:
+            session.rollback()
+            text = "❌ Ошибка при подписке"
+            logger.error(f"Ошибка при подписке через кнопку: {e}")
+        finally:
+            session.close()
+
         await query.message.reply_text(text, reply_markup=get_main_keyboard())
 
     elif query.data == "unsubscribe":
         chat_id = update.effective_chat.id
-        if chat_id in NOTIFICATION_CHATS:
-            NOTIFICATION_CHATS.remove(chat_id)
-            text = "❌ Вы отписались от уведомлений"
-            logger.info(f"✅ Пользователь {update.effective_user.id} отписался через кнопку")
-        else:
-            text = "⚠️ Вы не были подписаны"
+
+        session = db.Session()
+        try:
+            chat = session.execute(
+                select(Chat).where(Chat.chat_id == chat_id)
+            ).scalar_one_or_none()
+
+            if chat:
+                session.delete(chat)
+                session.commit()
+                text = "❌ Вы отписались от уведомлений"
+                logger.info(f"✅ Пользователь {update.effective_user.id} отписался через кнопку")
+            else:
+                text = "⚠️ Вы не были подписаны"
+        except Exception as e:
+            session.rollback()
+            text = "❌ Ошибка при отписке"
+            logger.error(f"Ошибка при отписке через кнопку: {e}")
+        finally:
+            session.close()
+
         await query.message.reply_text(text, reply_markup=get_main_keyboard())
 
 
@@ -246,77 +326,110 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
     now = datetime.datetime.now()
     check_time = now + datetime.timedelta(hours=1)
 
+    logger.info(f"🔍 Проверка матчей для уведомлений...")
+
     session = db.Session()
-    result = session.execute(
-        "SELECT * FROM matches WHERE match_date <= ? AND match_date > ? AND is_notified = 0 AND match_status = 'scheduled'",
-        (check_time.isoformat(), now.isoformat())
-    )
-    rows = result.fetchall()
+    try:
+        # Ищем матчи, которые начнутся через час и еще не уведомили
+        matches = session.execute(
+            select(Match).where(
+                and_(
+                    Match.match_date <= check_time,
+                    Match.match_date > now,
+                    Match.is_notified == False,
+                    Match.match_status == 'scheduled'
+                )
+            )
+        ).scalars().all()
 
-    for row in rows:
-        match_id, tournament, home_team, away_team, match_date_str, is_notified, match_status = row
+        if not matches:
+            logger.info("📭 Нет матчей для уведомления")
+            return
 
-        try:
-            match_date = datetime.datetime.fromisoformat(match_date_str)
-        except ValueError:
-            match_date = datetime.datetime.fromisoformat(match_date_str.split('.')[0])
+        # Получаем список подписанных чатов
+        subscribed_chats = session.execute(select(Chat.chat_id)).scalars().all()
 
-        time_until = match_date - now
-        minutes = int(time_until.total_seconds() / 60)
+        if not subscribed_chats:
+            logger.info("📭 Нет подписчиков для уведомлений")
+            return
 
-        message = f"""
+        for match in matches:
+            time_until = match.match_date - now
+            minutes = int(time_until.total_seconds() / 60)
+
+            message = f"""
 ⚠️ <b>Скоро начнется матч!</b>
 
-🏆 {tournament}
-⚽ {home_team} vs {away_team}
+🏆 {match.tournament}
+⚽ {match.home_team} vs {match.away_team}
 ⏱ Начало через {minutes} минут
 
 🔵 Вперед, Челси! 🔵
-        """
+            """
 
-        for chat_id in NOTIFICATION_CHATS:
-            try:
-                await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='HTML')
-                logger.info(f"✅ Уведомление отправлено в чат {chat_id}")
-            except Exception as e:
-                logger.error(f"❌ Не удалось отправить уведомление в чат {chat_id}: {e}")
+            # Отправляем уведомления всем подписчикам
+            for chat_id in subscribed_chats:
+                try:
+                    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='HTML')
+                    logger.info(f"✅ Уведомление отправлено в чат {chat_id}")
+                except Exception as e:
+                    logger.error(f"❌ Не удалось отправить уведомление в чат {chat_id}: {e}")
 
-        session.execute("UPDATE matches SET is_notified = 1 WHERE id = ?", (match_id,))
-        session.commit()
+                    # Если бот заблокирован или чат не найден, удаляем подписку
+                    if "Forbidden" in str(e) or "chat not found" in str(e):
+                        try:
+                            chat_to_delete = session.execute(
+                                select(Chat).where(Chat.chat_id == chat_id)
+                            ).scalar_one_or_none()
+                            if chat_to_delete:
+                                session.delete(chat_to_delete)
+                                session.commit()
+                                logger.info(f"🗑 Удалена недействительная подписка для чата {chat_id}")
+                        except Exception as delete_error:
+                            logger.error(f"Ошибка при удалении подписки: {delete_error}")
 
-    session.close()
+            # Отмечаем матч как уведомленный
+            match.is_notified = True
+            session.commit()
+            logger.info(f"✅ Матч {match.id} отмечен как уведомленный")
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"❌ Ошибка в check_and_notify: {e}")
+    finally:
+        session.close()
 
 
 async def show_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать все матчи в базе"""
     logger.info(f"🔵 ПОЛУЧЕНА КОМАНДА /show от пользователя {update.effective_user.id}")
 
+    session = db.Session()
     try:
-        session = db.Session()
-        result = session.execute(
-            "SELECT id, tournament, home_team, away_team, match_date, is_notified, match_status FROM matches ORDER BY match_date LIMIT 10")
-        rows = result.fetchall()
+        # Получаем общее количество
+        total_count = session.query(Match).count()
 
-        count = session.execute("SELECT COUNT(*) FROM matches").scalar()
-        session.close()
+        # Получаем первые 10 матчей
+        matches = session.query(Match).order_by(Match.match_date).limit(10).all()
 
-        if not rows:
+        if not matches:
             await update.message.reply_text(
                 "📭 База данных пуста",
                 reply_markup=get_main_keyboard()
             )
             return
 
-        message = f"📋 <b>Всего матчей: {count}</b>\n\n"
+        message = f"📋 <b>Всего матчей: {total_count}</b>\n\n"
         message += "<b>Первые 10 матчей:</b>\n\n"
-        for row in rows:
-            date_obj = datetime.datetime.fromisoformat(row[4])
-            date_str = date_obj.strftime("%d.%m.%Y %H:%M")
-            message += f"🆔 ID: {row[0]}\n"
-            message += f"🏆 {row[1]}\n"
-            message += f"⚽ {row[2]} vs {row[3]}\n"
+
+        for match in matches:
+            date_str = match.match_date.strftime("%d.%m.%Y %H:%M")
+            message += f"🆔 ID: {match.id}\n"
+            message += f"🏆 {match.tournament}\n"
+            message += f"⚽ {match.home_team} vs {match.away_team}\n"
             message += f"📅 {date_str}\n"
-            message += f"📊 Статус: {row[6]}\n"
+            message += f"📊 Статус: {match.match_status}\n"
+            message += f"🔔 Уведомлен: {'Да' if match.is_notified else 'Нет'}\n"
             message += "─" * 20 + "\n"
 
         await update.message.reply_text(
@@ -331,6 +444,45 @@ async def show_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_main_keyboard()
         )
         logger.error(f"Ошибка в show_matches: {e}")
+    finally:
+        session.close()
+
+
+async def show_subscribers(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать список подписчиков (только для админа)"""
+    logger.info(f"🔵 ПОЛУЧЕНА КОМАНДА /subscribers от пользователя {update.effective_user.id}")
+
+    # Здесь можно добавить проверку на админа
+    # if update.effective_user.id not in ADMIN_IDS:
+    #     await update.message.reply_text("⛔ У вас нет прав для этой команды")
+    #     return
+
+    session = db.Session()
+    try:
+        subscribers = session.query(Chat).order_by(Chat.subscribed_at.desc()).all()
+
+        if not subscribers:
+            await update.message.reply_text("📭 Нет подписчиков")
+            return
+
+        message = "📋 <b>Список подписчиков:</b>\n\n"
+        for sub in subscribers:
+            date_str = sub.subscribed_at.strftime("%d.%m.%Y %H:%M")
+            message += f"👤 ID: {sub.user_id}\n"
+            message += f"💬 Chat: {sub.chat_id}\n"
+            message += f"📝 Username: @{sub.username if sub.username else 'Нет'}\n"
+            message += f"📅 Подписался: {date_str}\n"
+            message += "─" * 20 + "\n"
+
+        await update.message.reply_text(
+            message,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Ошибка при показе подписчиков: {e}")
+        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
+    finally:
+        session.close()
 
 
 def main():
@@ -360,6 +512,7 @@ def main():
     application.add_handler(CommandHandler("subscribe", subscribe))
     application.add_handler(CommandHandler("unsubscribe", unsubscribe))
     application.add_handler(CommandHandler("show", show_matches))
+    application.add_handler(CommandHandler("subscribers", show_subscribers))
     application.add_handler(CallbackQueryHandler(button_handler))
 
     # Настраиваем планировщик для уведомлений
@@ -368,7 +521,7 @@ def main():
         check_and_notify,
         'interval',
         minutes=5,
-        args=[application]
+        args=[application]  # Передаем application, он будет преобразован в context
     )
     scheduler.start()
 
