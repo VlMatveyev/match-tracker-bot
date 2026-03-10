@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+import datetime
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -30,7 +30,7 @@ class Chat(Base):
     chat_id = Column(BigInteger, unique=True, nullable=False)
     user_id = Column(BigInteger, nullable=False)
     username = Column(String, nullable=True)
-    subscribed_at = Column(DateTime, default=datetime.now)
+    subscribed_at = Column(DateTime, default=datetime.datetime.now)
 
     def __repr__(self):
         return f"<Chat(chat_id={self.chat_id}, user_id={self.user_id})>"
