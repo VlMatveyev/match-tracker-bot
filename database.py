@@ -136,27 +136,22 @@ class Database:
             session.close()
         return matches
 
-    def get_upcoming_matches(self, days=7):
-        """Ближайшие матчи на N дней"""
+    def get_upcoming_matches(self, days=30, limit=5):
+        """Получить ближайшие матчи (по умолчанию следующие 5)"""
         session = self.Session()
-        now = datetime.datetime.now()
-        future = now + datetime.timedelta(days=days)
-
         try:
-            matches = session.query(Match).filter(
-                Match.match_date >= now,
-                Match.match_date <= future,
-                Match.match_status == 'scheduled'
-            ).order_by(Match.match_date).all()
+            now = datetime.now()
+            from datetime import timedelta
+            future = now + timedelta(days=days)
 
-            logger.info(f"Найдено ближайших матчей: {len(matches)}")
-
-        except Exception as e:
-            logger.error(f"Ошибка в get_upcoming_matches: {e}")
-            matches = []
+            matches = session.query(Match) \
+                .filter(Match.match_date.between(now, future)) \
+                .order_by(Match.match_date) \
+                .limit(limit) \
+                .all()
+            return matches
         finally:
             session.close()
-        return matches
 
     def mark_notified(self, match_id):
         """Отметить матч как уведомленный"""
