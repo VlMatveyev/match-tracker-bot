@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def get_main_keyboard():
     """Возвращает клавиатуру с одной кнопкой для вызова команд"""
     keyboard = [
-        [InlineKeyboardButton("📋 Меню команд", callback_data="show_commands")]
+        [InlineKeyboardButton("⚽ Вперед!", callback_data="show_commands")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -57,7 +57,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Нажмите кнопку ниже, чтобы увидеть список доступных команд.
 
-⚽ <b>Вперед!</b>
     """
 
     try:
@@ -81,7 +80,7 @@ async def show_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 ⏭ <b>Следующий матч</b> - показать ближайший матч
 📅 <b>На сегодня</b> - матчи на сегодня
-📆 <b>Ближайшие 5</b> - следующие 5 матчей
+📆 <b>Ближайшие матчи</b> - следующие 5 матчей
 🔔 <b>Подписаться</b> - на уведомления о матчах
 ❌ <b>Отписаться</b> - отписаться от уведомлений
 
