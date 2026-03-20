@@ -9,48 +9,62 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ТОЛЬКО ПРЕДСТОЯЩИЕ матчи Челси (АПЛ + Кубки + ЛЧ)
-# Время указано МОСКОВСКОЕ (UTC+3) на основе championat.com
-UPCOMING_FIXTURES = [
+# ============================================
+# ПРЕДСТОЯЩИЕ МАТЧИ ЧЕЛСИ
+# ============================================
+CHELSEA_FIXTURES = [
     # Лига чемпионов - Март 2026 (1/8 финала)
-    {"date": "2026-03-11 23:00", "home": "ПСЖ", "away": "Челси", "tournament": "Лига чемпионов"},
-    # 1/8 финала, 1-й матч
+    {"date": "2026-03-17 23:00", "home": "Челси", "away": "ПСЖ", "tournament": "Лига чемпионов", "team": "Челси"},
 
     # АПЛ - Март 2026
-    {"date": "2026-03-14 20:30", "home": "Челси", "away": "Ньюкасл", "tournament": "АПЛ"},
-    {"date": "2026-03-21 20:30", "home": "Эвертон", "away": "Челси", "tournament": "АПЛ"},
-
-    # Лига чемпионов - Март 2026 (1/8 финала ответный)
-    {"date": "2026-03-17 23:00", "home": "Челси", "away": "ПСЖ", "tournament": "Лига чемпионов"},  # 1/8 финала ответный
+    {"date": "2026-03-21 20:30", "home": "Эвертон", "away": "Челси", "tournament": "АПЛ", "team": "Челси"},
 
     # Кубок Англии - Апрель 2026
-    {"date": "2026-04-04 17:00", "home": "Челси", "away": "Порт Вейл", "tournament": "Кубок Англии"},  # Четвертьфинал
+    {"date": "2026-04-04 17:00", "home": "Челси", "away": "Порт Вейл", "tournament": "Кубок Англии", "team": "Челси"},
 
     # АПЛ - Апрель 2026
-    {"date": "2026-04-11 17:00", "home": "Челси", "away": "Манчестер Сити", "tournament": "АПЛ"},
-    {"date": "2026-04-18 17:00", "home": "Челси", "away": "Манчестер Юнайтед", "tournament": "АПЛ"},
-    {"date": "2026-04-25 17:00", "home": "Брайтон", "away": "Челси", "tournament": "АПЛ"},
+    {"date": "2026-04-11 17:00", "home": "Челси", "away": "Манчестер Сити", "tournament": "АПЛ", "team": "Челси"},
+    {"date": "2026-04-18 22:00", "home": "Челси", "away": "Манчестер Юнайтед", "tournament": "АПЛ", "team": "Челси"},
+    {"date": "2026-04-25 17:00", "home": "Брайтон", "away": "Челси", "tournament": "АПЛ", "team": "Челси"},
 
     # АПЛ - Май 2026
-    {"date": "2026-05-02 17:00", "home": "Челси", "away": "Ноттингем Форест", "tournament": "АПЛ"},
-    {"date": "2026-05-09 17:00", "home": "Ливерпуль", "away": "Челси", "tournament": "АПЛ"},
-    {"date": "2026-05-17 17:00", "home": "Челси", "away": "Тоттенхэм", "tournament": "АПЛ"},
-    {"date": "2026-05-24 18:00", "home": "Сандерленд", "away": "Челси", "tournament": "АПЛ"},
+    {"date": "2026-05-02 17:00", "home": "Челси", "away": "Ноттингем Форест", "tournament": "АПЛ", "team": "Челси"},
+    {"date": "2026-05-09 17:00", "home": "Ливерпуль", "away": "Челси", "tournament": "АПЛ", "team": "Челси"},
+    {"date": "2026-05-17 17:00", "home": "Челси", "away": "Тоттенхэм", "tournament": "АПЛ", "team": "Челси"},
+    {"date": "2026-05-24 18:00", "home": "Сандерленд", "away": "Челси", "tournament": "АПЛ", "team": "Челси"},
 ]
 
-# Если Челси выйдет в четвертьфинал Лиги чемпионов
-CHAMPIONS_LEAGUE_QF = {
-    "first_leg": {"date": "2026-04-07 22:00", "home": "TBD", "away": "Челси", "tournament": "Лига чемпионов"},
-    "second_leg": {"date": "2026-04-14 22:00", "home": "Челси", "away": "TBD", "tournament": "Лига чемпионов"}
-}
+# ============================================
+# ПРЕДСТОЯЩИЕ МАТЧИ МАНЧЕСТЕР ЮНАЙТЕД
+# ============================================
+MANCHESTER_UNITED_FIXTURES = [
+    # Март 2026
+    {"date": "2026-03-20 23:00", "home": "Борнмут", "away": "Манчестер Юнайтед", "tournament": "АПЛ",
+     "team": "Манчестер Юнайтед"},
 
-# Если Челси выйдет в полуфинал Кубка Англии
-FA_CUP_SF = {
-    "date": "2026-05-02 19:00",  # Ориентировочная дата полуфинала
-    "home": "Челси",  # Может быть жеребьёвка
-    "away": "TBD",
-    "tournament": "Кубок Англии"
-}
+    # Апрель 2026
+    {"date": "2026-04-13 22:00", "home": "Манчестер Юнайтед", "away": "Лидс Юнайтед", "tournament": "АПЛ",
+     "team": "Манчестер Юнайтед"},
+    {"date": "2026-04-18 22:00", "home": "Челси", "away": "Манчестер Юнайтед", "tournament": "АПЛ",
+     "team": "Манчестер Юнайтед"},
+    {"date": "2026-04-27 22:00", "home": "Манчестер Юнайтед", "away": "Брентфорд", "tournament": "АПЛ",
+     "team": "Манчестер Юнайтед"},
+
+    # Май 2026
+    {"date": "2026-05-02 17:00", "home": "Манчестер Юнайтед", "away": "Ливерпуль", "tournament": "АПЛ",
+     "team": "Манчестер Юнайтед"},
+    {"date": "2026-05-09 17:00", "home": "Сандерленд", "away": "Манчестер Юнайтед", "tournament": "АПЛ",
+     "team": "Манчестер Юнайтед"},
+    {"date": "2026-05-17 17:00", "home": "Манчестер Юнайтед", "away": "Ноттингем Форест", "tournament": "АПЛ",
+     "team": "Манчестер Юнайтед"},
+    {"date": "2026-05-24 18:00", "home": "Брайтон энд Хоув Альбион", "away": "Манчестер Юнайтед", "tournament": "АПЛ",
+     "team": "Манчестер Юнайтед"},
+]
+
+# ============================================
+# ВСЕ МАТЧИ ВМЕСТЕ
+# ============================================
+ALL_FIXTURES = CHELSEA_FIXTURES + MANCHESTER_UNITED_FIXTURES
 
 
 def parse_fixture_date(date_str):
@@ -87,7 +101,7 @@ def load_fixtures(clear_finished=True):
     added_count = 0
     skipped_count = 0
 
-    for fixture in UPCOMING_FIXTURES:
+    for fixture in ALL_FIXTURES:
         match_date = parse_fixture_date(fixture["date"])
         if not match_date:
             skipped_count += 1
@@ -132,20 +146,28 @@ def load_fixtures(clear_finished=True):
     return added_count
 
 
-def show_upcoming_matches(limit=10):
-    """Показать предстоящие матчи для проверки"""
+def show_upcoming_matches(limit=10, team=None):
+    """Показать предстоящие матчи для проверки (опционально для конкретной команды)"""
     session = db.Session()
     now = datetime.datetime.now()
 
-    matches = session.query(Match).filter(
+    query = session.query(Match).filter(
         Match.match_date > now,
         Match.match_status == 'scheduled'
-    ).order_by(Match.match_date).limit(limit).all()
+    )
+
+    if team:
+        query = query.filter(
+            (Match.home_team == team) | (Match.away_team == team)
+        )
+
+    matches = query.order_by(Match.match_date).limit(limit).all()
 
     if not matches:
         logger.info("📭 Нет предстоящих матчей")
     else:
-        logger.info(f"📅 Предстоящие матчи (Московское время):")
+        team_str = f" для {team}" if team else ""
+        logger.info(f"📅 Предстоящие матчи{team_str} (Московское время):")
         for i, match in enumerate(matches, 1):
             date_str = match.match_date.strftime("%d.%m.%Y %H:%M")
             logger.info(f"  {i}. {match.home_team} vs {match.away_team} - {date_str} МСК ({match.tournament})")
@@ -154,14 +176,36 @@ def show_upcoming_matches(limit=10):
     return matches
 
 
+def get_matches_by_team(team_name):
+    """Получить все матчи для конкретной команды"""
+    session = db.Session()
+    now = datetime.datetime.now()
+
+    matches = session.query(Match).filter(
+        ((Match.home_team == team_name) | (Match.away_team == team_name)) &
+        (Match.match_date > now) &
+        (Match.match_status == 'scheduled')
+    ).order_by(Match.match_date).all()
+
+    session.close()
+    return matches
+
+
 if __name__ == "__main__":
-    logger.info("🚀 Загрузка предстоящих матчей Челси (АПЛ + Кубок Англии + Лига чемпионов)...")
+    logger.info("🚀 Загрузка предстоящих матчей Челси и Манчестер Юнайтед...")
     logger.info("🕒 Все даты указаны в московском времени (UTC+3) на основе championat.com")
 
-    # Загружаем только предстоящие матчи
+    # Загружаем все матчи
     count = load_fixtures(clear_finished=True)
 
-    # Показываем предстоящие матчи
-    show_upcoming_matches()
+    # Показываем статистику по командам
+    chelsea_matches = get_matches_by_team("Челси")
+    united_matches = get_matches_by_team("Манчестер Юнайтед")
+
+    logger.info(f"📊 Челси: {len(chelsea_matches)} предстоящих матчей")
+    logger.info(f"📊 Манчестер Юнайтед: {len(united_matches)} предстоящих матчей")
+
+    # Показываем ближайшие матчи
+    show_upcoming_matches(5)
 
     logger.info("✨ Загрузка завершена!")
