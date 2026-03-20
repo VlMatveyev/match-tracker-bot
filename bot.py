@@ -33,7 +33,7 @@ def get_commands_keyboard():
     keyboard = [
         [InlineKeyboardButton("⏭ Следующий матч", callback_data="next"),
          InlineKeyboardButton("📅 На сегодня", callback_data="today")],
-        [InlineKeyboardButton("📆 Ближайшие 5", callback_data="upcoming"),
+        [InlineKeyboardButton("📆 Ближайшие", callback_data="upcoming"),
          InlineKeyboardButton("🔔 Подписаться", callback_data="subscribe")],
         [InlineKeyboardButton("❌ Отписаться", callback_data="unsubscribe")],
         [InlineKeyboardButton("🔄 Сменить команду", callback_data="change_team")],
