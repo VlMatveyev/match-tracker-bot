@@ -327,7 +327,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await select_team(update, context)
 
 
-async def check_and_notify(context):
+async def check_and_notify():
     pass
 
 def main():
