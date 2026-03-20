@@ -428,13 +428,15 @@ def main():
     scheduler.add_job(
         check_and_notify,
         'interval',
-        minutes=5
+        minutes=5,
+        args=[application]
     )
+
+    # Сначала запускаем планировщик
     scheduler.start()
 
-    logger.info("🚀 Бот запущен и ожидает команды...")
+    # Потом запускаем приложение
     application.run_polling()
-
 
 if __name__ == '__main__':
     main()

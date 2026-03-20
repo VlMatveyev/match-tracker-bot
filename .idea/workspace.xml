@@ -7,8 +7,6 @@
     <list default="true" id="80c746cb-f2e2-4fcd-8247-f07e2ed64772" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bot.py" beforeDir="false" afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chelsea_matches.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/load_fixtures.py" beforeDir="false" afterPath="$PROJECT_DIR$/load_fixtures.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
