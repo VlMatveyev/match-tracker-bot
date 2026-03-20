@@ -502,11 +502,9 @@ def main():
         args=[application]
     )
 
-    # Сначала запускаем планировщик
-    scheduler.start()
-
-    # Потом запускаем приложение
     application.run_polling()
+
+    scheduler.start()
 
 if __name__ == '__main__':
     main()
