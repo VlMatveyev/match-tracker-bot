@@ -150,7 +150,7 @@ async def show_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 ⏭ <b>Следующий матч</b> - показать ближайший матч
 📅 <b>На сегодня</b> - матчи на сегодня
-📆 <b>Ближайшие 5</b> - следующие 5 матчей
+📆 <b>Ближайшие</b> - ближайшие матчи
 🔔 <b>Подписаться</b> - на уведомления о матчах
 ❌ <b>Отписаться</b> - отписаться от уведомлений
 🔄 <b>Сменить команду</b> - выбрать другую команду
@@ -259,7 +259,7 @@ async def today_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def upcoming_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Следующие 5 матчей для выбранной команды"""
+    """Следующие матчи для выбранной команды"""
     logger.info(f"🔵 ПОЛУЧЕНА КОМАНДА /upcoming от пользователя {update.effective_user.id}")
 
     chat_id = update.effective_chat.id
@@ -278,7 +278,7 @@ async def upcoming_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not matches:
         text = f"📆 Нет ближайших матчей для {selected_team}"
     else:
-        text = f"📆 <b>Следующие 5 матчей {selected_team}:</b>\n\n"
+        text = f"📆 <b>Ближайшие матчи {selected_team}:</b>\n\n"
         for i, match in enumerate(matches, 1):
             date_str = match.match_date.strftime("%d.%m.%Y в %H:%M")
             text += f"{i}. ⚽ {match.home_team} vs {match.away_team}\n"
@@ -293,12 +293,77 @@ async def upcoming_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Подписка на уведомления"""
+    logger.info(f"🔵 ПОЛУЧЕНА КОМАНДА /subscribe от пользователя {update.effective_user.id}")
+
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    username = update.effective_user.username
+
+    session = db.Session()
+    try:
+        existing = session.execute(
+            select(Chat).where(Chat.chat_id == chat_id)
+        ).scalar_one_or_none()
+
+        if not existing:
+            new_chat = Chat(
+                chat_id=chat_id,
+                user_id=user_id,
+                username=username,
+                subscribed_at=datetime.datetime.now()
+            )
+            session.add(new_chat)
+            session.commit()
+            text = "✅ Вы подписались на уведомления о матчах!"
+            logger.info(f"✅ Пользователь {user_id} подписался на уведомления")
+        else:
+            text = "⚠️ Вы уже подписаны на уведомления"
+    except Exception as e:
+        session.rollback()
+        text = "❌ Ошибка при подписке"
+        logger.error(f"Ошибка при подписке: {e}")
+    finally:
+        session.close()
+
     if update.callback_query:
-        await update.callback_query.message.reply_text("🔔 Подписка пока не реализована")
+        await update.callback_query.answer()
+        await update.callback_query.message.reply_text(text, reply_markup=get_back_keyboard())
+    else:
+        await update.message.reply_text(text, reply_markup=get_main_keyboard())
+
 
 async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отписка от уведомлений"""
+    logger.info(f"🔵 ПОЛУЧЕНА КОМАНДА /unsubscribe от пользователя {update.effective_user.id}")
+
+    chat_id = update.effective_chat.id
+
+    session = db.Session()
+    try:
+        chat = session.execute(
+            select(Chat).where(Chat.chat_id == chat_id)
+        ).scalar_one_or_none()
+
+        if chat:
+            session.delete(chat)
+            session.commit()
+            text = "❌ Вы отписались от уведомлений"
+            logger.info(f"✅ Пользователь {update.effective_user.id} отписался от уведомлений")
+        else:
+            text = "⚠️ Вы не были подписаны"
+    except Exception as e:
+        session.rollback()
+        text = "❌ Ошибка при отписке"
+        logger.error(f"Ошибка при отписке: {e}")
+    finally:
+        session.close()
+
     if update.callback_query:
-        await update.callback_query.message.reply_text("❌ Отписка пока не реализована")
+        await update.callback_query.answer()
+        await update.callback_query.message.reply_text(text, reply_markup=get_back_keyboard())
+    else:
+        await update.message.reply_text(text, reply_markup=get_main_keyboard())
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка нажатий на кнопки"""
