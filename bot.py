@@ -106,7 +106,7 @@ async def select_team(update: Update, context: ContextTypes.DEFAULT_TYPE):
     team = query.data.replace("select_team_", "")
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
-    username = update.effective_user.username
+    username = update.effective_user.username or "unknown"
 
     # Сохраняем выбранную команду
     db.set_user_selected_team(chat_id, user_id, username, team)
@@ -141,7 +141,6 @@ async def change_team(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать список команд"""
     query = update.callback_query
-    await query.answer()
 
     chat_id = update.effective_chat.id
     selected_team = db.get_user_selected_team(chat_id)
@@ -222,7 +221,6 @@ async def next_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.callback_query:
         query = update.callback_query
-        await query.answer()
         await query.message.reply_text(text, reply_markup=get_back_keyboard(), parse_mode='HTML')
     else:
         await update.message.reply_text(text, reply_markup=get_main_keyboard(), parse_mode='HTML')
@@ -255,7 +253,6 @@ async def today_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.callback_query:
         query = update.callback_query
-        await query.answer()
         await query.message.reply_text(text, reply_markup=get_back_keyboard(), parse_mode='HTML')
     else:
         await update.message.reply_text(text, reply_markup=get_main_keyboard(), parse_mode='HTML')
@@ -290,23 +287,18 @@ async def upcoming_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.callback_query:
         query = update.callback_query
-        await query.answer()
         await query.message.reply_text(text, reply_markup=get_back_keyboard(), parse_mode='HTML')
     else:
         await update.message.reply_text(text, reply_markup=get_main_keyboard(), parse_mode='HTML')
 
 
 async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Подписка на уведомления"""
-    # ... существующий код subscribe ...
-    pass  # Заглушка, нужно добавить существующий код
-
+    if update.callback_query:
+        await update.callback_query.message.reply_text("🔔 Подписка пока не реализована")
 
 async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отписка от уведомлений"""
-    # ... существующий код unsubscribe ...
-    pass  # Заглушка, нужно добавить существующий код
-
+    if update.callback_query:
+        await update.callback_query.message.reply_text("❌ Отписка пока не реализована")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка нажатий на кнопки"""
@@ -335,11 +327,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await select_team(update, context)
 
 
-async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
-    """Проверка матчей и отправка уведомлений"""
-    # ... существующий код check_and_notify ...
-    pass  # Заглушка, нужно добавить существующий код
-
+async def check_and_notify(context):
+    pass
 
 def main():
     """Запуск бота"""
@@ -374,8 +363,7 @@ def main():
     scheduler.add_job(
         check_and_notify,
         'interval',
-        minutes=5,
-        args=[application]
+        minutes=5
     )
     scheduler.start()
 
