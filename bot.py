@@ -341,7 +341,7 @@ def main():
         logger.info("⚠️ База данных пуста. Загружаем матчи...")
         try:
             from load_fixtures import load_fixtures
-            load_fixtures(clear_first=True)
+            load_fixtures()
         except Exception as e:
             logger.error(f"❌ Ошибка при загрузке матчей: {e}")
     else:
