@@ -392,8 +392,78 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await select_team(update, context)
 
 
-async def check_and_notify():
-    pass
+async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
+    """Проверка матчей и отправка уведомлений"""
+    now = datetime.datetime.now()
+    check_time = now + datetime.timedelta(hours=1)
+
+    logger.info(f"🔍 Проверка матчей для уведомлений...")
+
+    session = db.Session()
+    try:
+        matches = session.execute(
+            select(Match).where(
+                and_(
+                    Match.match_date <= check_time,
+                    Match.match_date > now,
+                    Match.is_notified == False,
+                    Match.match_status == 'scheduled'
+                )
+            )
+        ).scalars().all()
+
+        if not matches:
+            logger.info("📭 Нет матчей для уведомления")
+            return
+
+        subscribed_chats = session.execute(select(Chat.chat_id)).scalars().all()
+
+        if not subscribed_chats:
+            logger.info("📭 Нет подписчиков для уведомлений")
+            return
+
+        for match in matches:
+            time_until = match.match_date - now
+            minutes = int(time_until.total_seconds() / 60)
+
+            message = f"""
+⚠️ <b>Скоро начнется матч!</b>
+
+🏆 {match.tournament}
+⚽ {match.home_team} vs {match.away_team}
+⏱ Начало через {minutes} минут
+
+⚽ <b>Вперед!</b>
+            """
+
+            for chat_id in subscribed_chats:
+                try:
+                    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='HTML')
+                    logger.info(f"✅ Уведомление отправлено в чат {chat_id}")
+                except Exception as e:
+                    logger.error(f"❌ Не удалось отправить уведомление в чат {chat_id}: {e}")
+
+                    if "Forbidden" in str(e) or "chat not found" in str(e):
+                        try:
+                            chat_to_delete = session.execute(
+                                select(Chat).where(Chat.chat_id == chat_id)
+                            ).scalar_one_or_none()
+                            if chat_to_delete:
+                                session.delete(chat_to_delete)
+                                session.commit()
+                                logger.info(f"🗑 Удалена недействительная подписка для чата {chat_id}")
+                        except Exception as delete_error:
+                            logger.error(f"Ошибка при удалении подписки: {delete_error}")
+
+            match.is_notified = True
+            session.commit()
+            logger.info(f"✅ Матч {match.id} отмечен как уведомленный")
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"❌ Ошибка в check_and_notify: {e}")
+    finally:
+        session.close()
 
 def main():
     """Запуск бота"""
@@ -428,8 +498,7 @@ def main():
     scheduler.add_job(
         check_and_notify,
         'interval',
-        minutes=5,
-        args=[application]
+        minutes=5
     )
 
     # Сначала запускаем планировщик
