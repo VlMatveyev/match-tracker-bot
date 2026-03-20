@@ -498,7 +498,8 @@ def main():
     scheduler.add_job(
         check_and_notify,
         'interval',
-        minutes=5
+        minutes=5,
+        args=[application]
     )
 
     # Сначала запускаем планировщик
